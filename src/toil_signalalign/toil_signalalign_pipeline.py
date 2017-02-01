@@ -16,7 +16,7 @@ from toil.job import Job
 from toil_lib.files import generate_file
 from toil_lib import require, UserError
 
-from signalalign.toil.ledger import makeNanoporeReadLedgerJobFunction
+from signalalign.toil.ledger import makeReadstoreJobFunction
 
 from minionSample import ReadstoreSample, SignalAlignSample
 
@@ -95,7 +95,8 @@ def generateConfig(command):
         # all downstream analysis, but only needs to be performed once per dataset
         readstore_dir: s3://arand-sandbox/ci_readstore/
         readstore_ledger_dir: s3://arand-sandbox/
-        batchsize: 5
+        ledger_name: test
+        batchsize: 2
         debug: True
     """[1:])
 
@@ -229,13 +230,12 @@ def main():
         # Parse config
         config  = {x.replace('-', '_'): y for x, y in yaml.load(open(args.config).read()).iteritems()}
         samples = parseManifestReadstore(args.manifest)
-        for sample in samples:
-            with Toil(args) as toil:
-                if not toil.options.restart:
-                    root_job = Job.wrapJobFn(makeNanoporeReadLedgerJobFunction, config, sample)
-                    return toil.start(root_job)
-                else:
-                    toil.restart()
+        with Toil(args) as toil:
+            if not toil.options.restart:
+                root_job = Job.wrapJobFn(makeReadstoreJobFunction, config, samples)
+                return toil.start(root_job)
+            else:
+                toil.restart()
 
 
 if __name__ == '__main__':
