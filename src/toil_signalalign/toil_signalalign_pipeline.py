@@ -99,7 +99,9 @@ def generateConfig(command):
         # Required: Which subprograms to run, typically you run all 4, but you can run them piecemeal if you like
         # prepare_fast5 -  extract and upload .fast5s from an archive to S3 as NanoporeReads, required for
         # all downstream analysis, but only needs to be performed once per dataset
-        batchsize:
+        readstore_dir: s3://arand-sandbox/ci_readstore/
+        readstore_ledger_dir: s3://arand-sandbox/
+        batchsize: 5
         debug: True
     """[1:])
 
