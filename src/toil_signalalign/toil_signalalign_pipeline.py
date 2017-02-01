@@ -36,15 +36,9 @@ def generateManifest(command):
         #   Edit this manifest to include information for each sample to be run.
         #   N.B. See README for description of 'ledger'
         #   Lines should contain three tab-seperated fields:
-        #       MinION_filetype  - options : ledger, tar-f5
         #       Alignment URL
-        #       MinION_URL
         #       Sample_label
-        #       Alignment file size
-        #       Minion_tar file size  nb. for 'ledger' this isn't used but put a place holder
-        #   Eg:
-        #   tar-f5  s3://yourbucket/chr20.bam   s3://groupdata/chr20.fast5s.tar mySample    4G  20G
-        #   ledger  s3://yourbucker/chr17.bam   s3://parseddata/chr17.ledger    Sample2     4G  10M
+        #       size
         #   Place your samples below, one sample per line.
         """[1:])
 
@@ -118,7 +112,7 @@ def parseManifestReadstore(path_to_manifest):
         require(not line.isspace() and not line.startswith("#"), "[parse_line]Invalid {}".format(line))
         sample_line = line.strip().split("\t")
         require(len(sample_line) == 4, "[parse_line]Invalid, len(line) != 4, offending {}".format(line))
-        filetype, url, size, sample_label = sample_line
+        filetype, url, sample_label, size = sample_line
         # checks:
         # check filetype
         require(filetype in allowed_file_types, "[parse_line]Unrecognized file type {}".format(filetype))
@@ -141,7 +135,7 @@ def parseManifest(path_to_manifest):
         require(not line.isspace() and not line.startswith("#"), "[parse_line]Invalid {}".format(line))
         sample_line = line.strip().split("\t")
         require(len(sample_line) == 3, "[parse_line]Invalid, len(line) != 3, offending {}".format(line))
-        url, size, sample_label = sample_line
+        url, sample_label, size = sample_line
         # check alignment URL
         require(urlparse(url).scheme and urlparse(url), "Invalid URL passed for {}".format(url))
 
