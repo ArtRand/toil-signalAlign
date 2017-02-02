@@ -81,22 +81,20 @@ def generateConfig(command):
     readstore_config = textwrap.dedent("""
         # UCSC SignalAlign READSTORE Pipeline configuration file
         # This configuration file is formatted in YAML. Simply write the value (at least one space) after the colon.
-        # Edit the values in this configuration file and then rerun the pipeline: "toil-nanopore run"
+        # Edit the values in this configuration file and then rerun the pipeline: "toil-signalAlign run-readstore"
         #
         # URLs can take the form: http://, ftp://, file://, s3://, gnos://
         # Local inputs follow the URL convention: file:///full/path/to/input
         # S3 URLs follow the convention: s3://bucket/directory/file.txt
         #
         # some options have been filled in with defaults
-
-        ## Universal Options/Inputs ##
-        # Required: Which subprograms to run, typically you run all 4, but you can run them piecemeal if you like
-        # prepare_fast5 -  extract and upload .fast5s from an archive to S3 as NanoporeReads, required for
-        # all downstream analysis, but only needs to be performed once per dataset
         readstore_dir: s3://arand-sandbox/ci_readstore/
         readstore_ledger_dir: s3://arand-sandbox/
         ledger_name: test
-        batchsize: 2
+        # batching options
+        split_tars_bigger_than_this:
+        put_this_many_reads_in_a_tar:
+        NanoporeRead_batchsize: 2
         debug: True
     """[1:])
 
