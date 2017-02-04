@@ -92,6 +92,11 @@ def generateConfig(command):
         readstore_ledger_dir: s3://arand-sandbox/
         ledger_name: test
         # batching options
+        # `split_tars_bigger_than_this` will split up tar'ed fast5 archives into smaller files (n.b this
+        # is based on the input size in the manifest)  it will then split them into pieces of
+        # `put_this_many_reads_in_a_tar` if the tar is smaller than `split_tars_bigger_than_this`
+        # it will just pass it on to the next step that makes NanoporeRead objects and uploads
+        # them to the readstore
         split_tars_bigger_than_this:
         put_this_many_reads_in_a_tar:
         NanoporeRead_batchsize: 2
