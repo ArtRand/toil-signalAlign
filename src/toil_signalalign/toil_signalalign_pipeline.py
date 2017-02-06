@@ -6,23 +6,66 @@ import argparse
 import os
 import textwrap
 import yaml
+import cPickle
+import uuid
 
 from urlparse import urlparse
 from functools import partial
 
+from bd2k.util.humanize import human2bytes
 from toil.common import Toil
 from toil.job import Job
 
 from toil_lib.files import generate_file
 from toil_lib import require, UserError
 
+from margin.toil.alignment import shardAlignmentByRegionJobFunction
+from margin.toil.localFileManager import LocalFile, urlDownlodJobFunction, urlDownload
 from signalalign.toil.ledger import makeReadstoreJobFunction
+from signalalign.toil.signalAlignment import signalAlignJobFunction
 
 from minionSample import ReadstoreSample, SignalAlignSample
 
 
+def signalAlignCheckInputJobFunction(job, config, sample):
+    require(config["ref"], "[signalAlignCheckInputJobFunction]Missing reference URL")
+    require(config["ledger_url"], "[signalAlignCheckInputJobFunction]Missing ledger URL")
+    require(config["HMM_file"], "[signalAlignCheckInputJobFunction]Missing HMM file URL")
+    require(config["HDP_file"], "[signalAlignCheckInputJobFunction]Missing HDP file URL")
+    job.addFollowOnJobFn(signalAlignRootJobFunction, config, sample)
+
+
 def signalAlignRootJobFunction(job, config, sample):
-    raise NotImplementedError
+    # download the reference
+    config["reference_FileStoreID"] = job.addChildJobFn(urlDownlodJobFunction,
+                                                        config["ref"],
+                                                        disk=config["ref_size"]).rv()
+
+    # download the BAM, and shard by region
+    alignment_fid = job.addChildJobFn(urlDownlodJobFunction, sample.URL, disk=sample.size).rv()
+
+    # download the models
+    config["HMM_fid"] = job.addChildJobFn(urlDownlodJobFunction, config["HMM_file"], disk="10M").rv()
+    config["HDP_fid"] = job.addChildJobFn(urlDownlodJobFunction, config["HDP_file"], disk="250M").rv()
+
+    # setup labels
+    config["sample_label"] = sample.sample_label
+
+    # download and load the ledger
+    # TODO use new function here
+    ledger = LocalFile(workdir=job.fileStore.getLocalTempDir(), filename="%s.tmp" % uuid.uuid4().hex)
+    urlDownload(job, config["ledger_url"], ledger)
+    config["ledger"] = cPickle.load(open(ledger.fullpathGetter(), "r"))
+    job.addFollowOnJobFn(shardAlignmentJobNode, config, alignment_fid)
+
+
+def shardAlignmentJobNode(job, config, alignment_fid):
+    # shard the alignment into smaller pieces, that we'll variant call independently
+    alignment_shards = job.addChildJobFn(shardAlignmentByRegionJobFunction,
+                                         config["reference_FileStoreID"],
+                                         alignment_fid,
+                                         config["split_chromosome_this_length"]).rv()
+    job.addFollowOnJobFn(signalAlignJobFunction, config, alignment_shards)
 
 
 def print_help():
@@ -34,7 +77,6 @@ def print_help():
 def generateManifest(command):
     run_manifest = textwrap.dedent("""
         #   Edit this manifest to include information for each sample to be run.
-        #   N.B. See README for description of 'ledger'
         #   Lines should contain three tab-seperated fields:
         #       Alignment URL
         #       Sample_label
@@ -68,13 +110,30 @@ def generateConfig(command):
         # S3 URLs follow the convention: s3://bucket/directory/file.txt
         #
         # some options have been filled in with defaults
+        # output directory
+        output_dir:
+        # reference sequences (FASTA)
+        ref:      s3://arand-sandbox/chr20.fa
+        ref_size: 100M
 
-        ## Universal Options/Inputs ##
-        # Required: Which subprograms to run, typically you run all 4, but you can run them piecemeal if you like
-        # prepare_fast5 -  extract and upload .fast5s from an archive to S3 as NanoporeReads, required for
-        # all downstream analysis, but only needs to be performed once per dataset
-        prepare_fast5: True
-        prepare_batch_size:
+        # ledger, pickle containing (read_label, npRead_url) pairs
+        ledger_url: s3://arand-sandbox/signalAlign_ci/chr20_part5__ledger.pkl
+
+        # models
+        HMM_file: s3://arand-sandbox/signalAlign_ci/models/template_trained.hmm
+        HDP_file: s3://arand-sandbox/signalAlign_ci/models/template.singleLevelPrior.nhdp
+
+        # sharding/batching options (only change these if you know what you're doing!)
+        split_chromosome_this_length:    1000000
+        max_alignment_length_per_job:    700000
+        max_alignments_per_job:          300
+        cut_batch_at_alignment_this_big: 20000
+
+        # signalAlign options
+        motif_key:
+        substitute_char:
+        degenerate:
+        
         debug: True
     """[1:])
 
@@ -124,7 +183,7 @@ def parseManifestReadstore(path_to_manifest):
         require(urlparse(url).scheme and urlparse(url),
                 "Invalid URL passed for {}".format(url))
 
-        return ReadstoreSample(file_type=filetype, URL=url, size=size, sample_label=sample_label)
+        return ReadstoreSample(file_type=filetype, URL=url, size=human2bytes(size), sample_label=sample_label)
 
     with open(path_to_manifest, "r") as fH:
         return map(parse_line, [x for x in fH if (not x.isspace() and not x.startswith("#"))])
@@ -224,7 +283,7 @@ def main():
         for sample in samples:
             with Toil(args) as toil:
                 if not toil.options.restart:
-                    root_job = Job.wrapJobFn(signalAlignRootJobFunction, config, sample)
+                    root_job = Job.wrapJobFn(signalAlignCheckInputJobFunction, config, sample)
                     return toil.start(root_job)
                 else:
                     toil.restart()
