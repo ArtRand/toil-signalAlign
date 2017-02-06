@@ -133,7 +133,9 @@ def generateConfig(command):
         motif_key:
         substitute_char:
         degenerate:
-        
+
+        # Debug and 'carefullness options'
+        stop_at_failed_reads: True
         debug: True
     """[1:])
 
@@ -158,7 +160,11 @@ def generateConfig(command):
         # them to the readstore
         split_tars_bigger_than_this:
         put_this_many_reads_in_a_tar:
+        download_cores:
+        max_download_slots:
+        download_part_size:
         NanoporeRead_batchsize: 2
+        
         debug: True
     """[1:])
 
