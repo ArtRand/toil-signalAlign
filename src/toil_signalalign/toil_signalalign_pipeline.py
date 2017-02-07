@@ -69,7 +69,14 @@ def shardAlignmentJobNode(job, config, alignment_fid):
 
 
 def print_help():
-    """this is the help for toil-signalAlign!
+    """
+      _/_/_/  _/                                _/    _/_/    _/  _/
+   _/              _/_/_/  _/_/_/      _/_/_/  _/  _/    _/  _/        _/_/_/  _/_/_/
+    _/_/    _/  _/    _/  _/    _/  _/    _/  _/  _/_/_/_/  _/  _/  _/    _/  _/    _/
+       _/  _/  _/    _/  _/    _/  _/    _/  _/  _/    _/  _/  _/  _/    _/  _/    _/
+_/_/_/    _/    _/_/_/  _/    _/    _/_/_/  _/  _/    _/  _/  _/    _/_/_/  _/    _/
+                   _/                                                  _/
+              _/_/                                                _/_/
     """
     return print_help.__doc__
 
