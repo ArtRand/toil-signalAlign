@@ -23,7 +23,7 @@ from margin.toil.alignment import shardAlignmentByRegionJobFunction
 from margin.toil.localFileManager import LocalFile, urlDownlodJobFunction, urlDownload
 from signalalign.motif import checkDegenerate
 from signalalign.toil.ledger import makeReadstoreJobFunction
-from signalalign.toil.signalAlignment import signalAlignJobFunction
+from signalalign.toil.callMethylation import signalAlignJobFunction
 
 from minionSample import ReadstoreSample, SignalAlignSample
 
@@ -123,12 +123,13 @@ def generateConfig(command):
         # some options have been filled in with defaults
         # output directory
         output_dir:
+        probs_output_dir:
         # reference sequences (FASTA)
         ref:      s3://arand-sandbox/chr20.fa
         ref_size: 100M
 
         # ledger, pickle containing (read_label, npRead_url) pairs
-        ledger_url: s3://arand-sandbox/signalAlign_ci/chr20_part5__ledger.pkl
+        ledger_url: s3://arand-sandbox/signalAlign_ci/tenreads_ledger.pkl
 
         # models
         HMM_file: s3://arand-sandbox/signalAlign_ci/models/template_trained.hmm
@@ -137,13 +138,14 @@ def generateConfig(command):
         # sharding/batching options (only change these if you know what you're doing!)
         split_chromosome_this_length:    1000000
         max_alignment_length_per_job:    700000
-        max_alignments_per_job:          75
+        ## DONT FORGET TO CHANGE THIS ##
+        max_alignments_per_job:          2
         cut_batch_at_alignment_this_big: 20000
 
         # signalAlign options
-        motif_key:
-        substitute_char:
-        degenerate:
+        motif_key: CG
+        substitute_char: X
+        degenerate: cytosine2
 
         # Debug and 'carefullness options'
         stop_at_failed_reads: True
